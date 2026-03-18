@@ -60,13 +60,6 @@
   .submit-btn { background: var(--yellow); color: var(--black); border: none; font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; padding: 10px 18px; border-radius: 8px; cursor: pointer; letter-spacing: 1px; }
   .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .attempt-counter { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--muted); margin-bottom: 8px; letter-spacing: 1px; }
-  .attempt-item { border-left: 2px solid var(--gray3); padding: 10px 14px; margin-bottom: 8px; font-size: 13px; }
-  .attempt-text { color: var(--muted); font-style: italic; margin-bottom: 4px; }
-  .attempt-result { font-size: 12px; }
-  .attempt-item.fail .attempt-result { color: #f87171; }
-  .attempt-item.warm .attempt-result { color: #fcd34d; }
-  .attempt-item.pass { border-left-color: var(--success); }
-  .attempt-item.pass .attempt-result { color: #86efac; }
   .ai-box { border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; font-size: 14px; line-height: 1.7; animation: fadeIn 0.4s ease; }
   .ai-box .ai-label { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; opacity: 0.6; margin-bottom: 8px; text-transform: uppercase; }
   .ai-box.blocked { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
@@ -81,6 +74,9 @@
   .qa-q { background: var(--gray2); border-radius: 10px 10px 0 0; padding: 12px 14px; font-size: 13px; }
   .qa-q-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--yellow); letter-spacing: 1px; margin-bottom: 4px; }
   .qa-a { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.2); border-radius: 0 0 10px 10px; padding: 12px 14px; font-size: 13px; color: #c4b5fd; line-height: 1.6; }
+  .qa-a.blocked { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; border-radius: 0 0 10px 10px; }
+  .qa-a.warm { background: rgba(245,196,0,0.08); border: 1px solid rgba(245,196,0,0.2); color: #fde68a; border-radius: 0 0 10px 10px; }
+  .qa-a.through { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: #86efac; border-radius: 0 0 10px 10px; }
   .qa-a-label { font-family: 'Space Mono', monospace; font-size: 10px; color: #a78bfa; letter-spacing: 1px; margin-bottom: 4px; }
   .qa-score { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--muted); margin-top: 6px; text-align: right; }
   .score-card { background: var(--gray); border: 1.5px solid var(--yellow); border-radius: 14px; padding: 20px; margin-bottom: 20px; animation: fadeIn 0.5s ease; }
@@ -158,7 +154,7 @@
     <div class="phase-num">1</div>
     <div>
       <div class="phase-title">Cold Outreach</div>
-      <div class="phase-sub">Get her attention. Unlimited attempts.</div>
+      <div class="phase-sub">Get her attention. Up to 8 attempts.</div>
     </div>
   </div>
   <div class="client-card">
@@ -199,7 +195,7 @@
     Sarah stops and faces you. <strong>"Okay, you've got my attention. What do you want to know?"</strong><br><br>
     Ask questions to uncover her real pain points. The more you uncover, the stronger your pitch.
   </div>
-  <div class="q-dots" id="q-dots">
+  <div class="q-dots">
     <div class="q-dot" id="dot-1"></div>
     <div class="q-dot" id="dot-2"></div>
     <div class="q-dot" id="dot-3"></div>
@@ -263,7 +259,7 @@ Price sensitivity: LOW — willing to pay more for reliability.
 Key pain: Shopee ratings dropped from 4.9 to 4.6 stars because of delivery issues.
 `;
 
-let team = null, p1Attempts = 0, p2Used = 0, p2QA = [], p2Discovered = [];
+let team = null, p1Attempts = 0, p2Used = 0, p2QA = [], p2Discovered = [], leftCard = false;
 let scores = { outreach: 0, discovery: 0, pitch: 0 };
 
 function cc(ta, id) { document.getElementById(id).textContent = `${ta.value.length} / ${ta.maxLength}`; }
@@ -311,6 +307,15 @@ function confirmTeam() {
   prog(10); show('s-p1');
 }
 
+function leaveCard() {
+  scores.outreach = 20;
+  leftCard = true;
+  document.getElementById('p1-input').disabled = true;
+  document.getElementById('p1-btn').disabled = true;
+  prog(35);
+  show('s-p2');
+}
+
 async function submitP1() {
   const input = document.getElementById('p1-input').value.trim();
   if (!input) return;
@@ -319,11 +324,11 @@ async function submitP1() {
   document.getElementById('p1-btn').disabled = true;
   loading('p1-res');
 
-  const system = `You are Sarah, 27, owner of Glam Studio beauty brand. You just finished a TikTok Live and are packing boxes. A courier sales rep is trying to cold approach you.
+  const system = `You are Sarah, 27, owner of Glam Studio beauty brand. You just finished a TikTok Live and are packing boxes. You are tired but friendly and approachable.
 Evaluate their opening line. Respond AS SARAH in first person. Max 50 words.
-BLOCKED: generic, salesy, feature-heavy — keep packing, respond coldly
-WARM: shows curiosity, references what you are doing — pause briefly, mild interest
-THROUGH: exceptionally insightful, makes you feel understood — stop packing, face them
+BLOCKED: pure sales pitch, mentions competitors by name, leads with pricing or features
+WARM: shows any genuine curiosity about your business or situation — pause, show interest
+THROUGH: references packing boxes, TikTok Live, your hustle, asks about your day, or shows genuine human connection — stop and face them. Be generous — if they show ANY human warmth or observation give them THROUGH.
 End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
 
   try {
@@ -334,13 +339,16 @@ End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
 
     const log = document.getElementById('p1-log');
     const div = document.createElement('div');
-    div.className = `attempt-item ${status === 'through' ? 'pass' : status}`;
-    div.innerHTML = `<div class="attempt-text">"${input}"</div><div class="attempt-result">${label}</div>`;
+    div.className = 'qa-item';
+    div.innerHTML = `
+      <div class="qa-q"><div class="qa-q-label">YOU SAID</div>${input}</div>
+      <div class="qa-a ${status}"><div class="qa-a-label">SARAH — ${label}</div>${clean}</div>
+    `;
     log.appendChild(div);
 
     await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'outreach', attempt_number: p1Attempts, submission_text: input, ai_response: clean, status, metadata: { attempt: p1Attempts } });
 
-    document.getElementById('p1-res').innerHTML = `<div class="ai-box ${status}"><div class="ai-label">SARAH RESPONDS</div>${clean}</div>`;
+    document.getElementById('p1-res').innerHTML = '';
 
     if (status === 'through') {
       scores.outreach = Math.max(40, 100 - (p1Attempts - 1) * 15);
@@ -352,6 +360,15 @@ End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
       document.getElementById('p1-input').value = '';
       document.getElementById('p1-cc').textContent = '0 / 300';
       document.getElementById('p1-btn').disabled = false;
+      if (p1Attempts >= 8) {
+        document.getElementById('p1-res').innerHTML = `
+          <div class="ai-box warm" style="margin-top:12px">
+            <div class="ai-label">HINT</div>
+            You have made 8 attempts. You can leave your business card and move on — but your outreach score will be capped at 20.
+          </div>
+          <button class="btn btn-outline" style="margin-top:10px" onclick="leaveCard()">LEAVE BUSINESS CARD →</button>
+        `;
+      }
     }
   } catch(e) {
     document.getElementById('p1-res').innerHTML = `<div class="ai-box blocked"><div class="ai-label">ERROR</div>Something went wrong. Please try again.</div>`;
@@ -392,7 +409,10 @@ Previous conversation: ${prevContext || 'None yet'}`;
     const log = document.getElementById('p2-log');
     const div = document.createElement('div');
     div.className = 'qa-item';
-    div.innerHTML = `<div class="qa-q"><div class="qa-q-label">YOU ASKED</div>${input}</div><div class="qa-a"><div class="qa-a-label">SARAH</div>${clean}<div class="qa-score">Question quality: ${score}/10</div></div>`;
+    div.innerHTML = `
+      <div class="qa-q"><div class="qa-q-label">YOU ASKED</div>${input}</div>
+      <div class="qa-a"><div class="qa-a-label">SARAH</div>${clean}<div class="qa-score">Question quality: ${score}/10</div></div>
+    `;
     log.appendChild(div);
 
     await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'discovery', attempt_number: p2Used, submission_text: input, ai_response: clean, score, metadata: { revealed, questionNumber: p2Used } });
@@ -406,7 +426,13 @@ Previous conversation: ${prevContext || 'None yet'}`;
     document.getElementById('p2-btn').disabled = false;
 
     if (p2Used >= MAX_Q) {
-      document.getElementById('p2-input-area').innerHTML = `<div class="ai-box warm" style="margin-bottom:16px"><div class="ai-label">SARAH</div>"Okay, I think you know enough about my situation. What do you have for me?"</div><button class="btn btn-outline" onclick="goP3()">MOVE TO PITCH →</button>`;
+      document.getElementById('p2-input-area').innerHTML = `
+        <div class="ai-box warm" style="margin-bottom:16px">
+          <div class="ai-label">SARAH</div>
+          "Okay, I think you know enough about my situation. What do you have for me?"
+        </div>
+        <button class="btn btn-outline" onclick="goP3()">MOVE TO PITCH →</button>
+      `;
     }
     prog(60);
   } catch(e) {
@@ -427,7 +453,11 @@ function updateDots() {
 
 function goP3() {
   if (p2Discovered.length > 0) {
-    document.getElementById('p3-discovered').innerHTML = `<div class="client-card" style="margin-bottom:20px"><div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--yellow);letter-spacing:2px;margin-bottom:10px">WHAT YOU DISCOVERED</div><div style="font-size:13px;color:#e5e5e0;line-height:1.8">${p2Discovered.join('<br>')}</div></div>`;
+    document.getElementById('p3-discovered').innerHTML = `
+      <div class="client-card" style="margin-bottom:20px">
+        <div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--yellow);letter-spacing:2px;margin-bottom:10px">WHAT YOU DISCOVERED</div>
+        <div style="font-size:13px;color:#e5e5e0;line-height:1.8">${p2Discovered.join('<br>')}</div>
+      </div>`;
   }
   prog(75); show('s-p3');
 }
@@ -443,6 +473,7 @@ async function submitP3() {
   const system = `You are an expert sales coach scoring a pitch made to Sarah from Glam Studio.
 Sarah's profile: ${CLIENT_PROFILE_HIDDEN}
 What the sales rep discovered: ${discovered || 'Limited — surface-level questions only.'}
+${leftCard ? 'Note: This rep could not get past the cold outreach phase and left a business card instead.' : ''}
 Return ONLY valid JSON, no other text:
 {"clientFit":<0-40>,"specificity":<0-30>,"differentiation":<0-30>,"totalScore":<0-100>,"sarahReaction":"<1-2 sentences first person>","feedback":"<2-3 sentences coaching>","strength":"<one key strength>","improve":"<one key improvement>"}
 clientFit(0-40): addresses late-night pickup, fragile handling, real-time tracking?
@@ -458,13 +489,13 @@ differentiation(0-30): clearly better than J&T without badmouthing?`;
     scores.pitch = sd.totalScore;
     const total = Math.round((scores.outreach * 0.20) + (scores.discovery * 0.20) + (sd.totalScore * 0.40) + 20);
 
-    await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'pitch', attempt_number: 1, submission_text: input, ai_response: sd.sarahReaction, score: total, metadata: { scoreBreakdown: { outreach: scores.outreach, discovery: scores.discovery, pitch: sd.totalScore, total }, pitchDetail: sd, p1Attempts, p2QA } });
+    await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'pitch', attempt_number: 1, submission_text: input, ai_response: sd.sarahReaction, score: total, metadata: { scoreBreakdown: { outreach: scores.outreach, discovery: scores.discovery, pitch: sd.totalScore, total }, pitchDetail: sd, p1Attempts, leftCard, p2QA } });
 
     document.getElementById('p3-res').innerHTML = `
       <div class="score-card">
         <div class="score-total"><div class="score-number">${total}</div><div class="score-sub">Total score · Glam Studio · ${team}</div></div>
         <div>
-          <div class="score-row"><span class="score-row-label">Cold outreach</span><span class="score-row-val">${scores.outreach}/100</span></div>
+          <div class="score-row"><span class="score-row-label">Cold outreach ${leftCard ? '(left card)' : ''}</span><span class="score-row-val">${scores.outreach}/100</span></div>
           <div class="bar-wrap"><div class="bar-fill" style="width:${scores.outreach}%"></div></div>
           <div class="score-row"><span class="score-row-label">Discovery quality</span><span class="score-row-val">${scores.discovery}/100</span></div>
           <div class="bar-wrap"><div class="bar-fill" style="width:${scores.discovery}%"></div></div>
