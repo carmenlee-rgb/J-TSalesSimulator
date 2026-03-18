@@ -66,6 +66,7 @@
   .ai-box.warm { background: rgba(245,196,0,0.08); border: 1px solid rgba(245,196,0,0.2); color: #fde68a; }
   .ai-box.through { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: #86efac; }
   .ai-box.neutral { background: var(--gray2); border: 1px solid var(--gray3); color: #e5e5e0; }
+  .ai-box.hint { background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.15); color: #fca5a5; }
   .q-dots { display: flex; gap: 6px; align-items: center; margin-bottom: 16px; }
   .q-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--yellow); transition: background 0.3s; }
   .q-dot.used { background: var(--gray3); }
@@ -173,7 +174,7 @@
   </div>
   <div id="p1-log"></div>
   <div class="attempt-counter" id="p1-counter">Attempt 1</div>
-  <div class="input-wrap">
+  <div class="input-wrap" id="p1-input-wrap">
     <textarea id="p1-input" placeholder="Write your opening line here..." maxlength="300" oninput="cc(this,'p1-cc')"></textarea>
     <div class="input-footer">
       <span class="char-count" id="p1-cc">0 / 300</span>
@@ -307,6 +308,13 @@ function confirmTeam() {
   prog(10); show('s-p1');
 }
 
+function tryAgain() {
+  document.getElementById('p1-res').innerHTML = '';
+  document.getElementById('p1-input').value = '';
+  document.getElementById('p1-cc').textContent = '0 / 300';
+  document.getElementById('p1-input').focus();
+}
+
 function leaveCard() {
   scores.outreach = 20;
   leftCard = true;
@@ -329,12 +337,15 @@ Evaluate their opening line. Respond AS SARAH in first person. Max 50 words.
 BLOCKED: pure sales pitch, mentions competitors by name, leads with pricing or features
 WARM: shows any genuine curiosity about your business or situation — pause, show interest
 THROUGH: references packing boxes, TikTok Live, your hustle, asks about your day, or shows genuine human connection — stop and face them. Be generous — if they show ANY human warmth or observation give them THROUGH.
-End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
+End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH
+If STATUS is BLOCKED, add a new line: HINT: [one short sentence explaining what specifically turned Sarah off and what to try instead]`;
 
   try {
     const result = await callAI(system, `Opening line: "${input}"`);
     const status = result.includes('STATUS: THROUGH') ? 'through' : result.includes('STATUS: WARM') ? 'warm' : 'blocked';
-    const clean = result.replace(/STATUS:\s*(BLOCKED|WARM|THROUGH)/g, '').trim();
+    const clean = result.replace(/STATUS:\s*(BLOCKED|WARM|THROUGH)/g, '').replace(/HINT:.*$/m, '').trim();
+    const hintMatch = result.match(/HINT:\s*(.+)/);
+    const hint = hintMatch ? hintMatch[1].trim() : null;
     const label = status === 'through' ? '✓ She stopped and turned to face you' : status === 'warm' ? '~ She paused briefly' : '✗ She kept packing';
 
     const log = document.getElementById('p1-log');
@@ -346,7 +357,7 @@ End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
     `;
     log.appendChild(div);
 
-    await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'outreach', attempt_number: p1Attempts, submission_text: input, ai_response: clean, status, metadata: { attempt: p1Attempts } });
+    await saveToSupabase({ team, client_id: CLIENT_ID, client_name: CLIENT_NAME, phase: 'outreach', attempt_number: p1Attempts, submission_text: input, ai_response: clean, status, metadata: { attempt: p1Attempts, hint } });
 
     document.getElementById('p1-res').innerHTML = '';
 
@@ -360,15 +371,27 @@ End with exactly: STATUS: BLOCKED or STATUS: WARM or STATUS: THROUGH`;
       document.getElementById('p1-input').value = '';
       document.getElementById('p1-cc').textContent = '0 / 300';
       document.getElementById('p1-btn').disabled = false;
-      if (p1Attempts >= 8) {
-        document.getElementById('p1-res').innerHTML = `
-          <div class="ai-box warm" style="margin-top:12px">
-            <div class="ai-label">HINT</div>
-            You have made 8 attempts. You can leave your business card and move on — but your outreach score will be capped at 20.
+
+      let resHtml = '';
+      if (hint) {
+        resHtml += `
+          <div class="ai-box hint" style="margin-top:12px">
+            <div class="ai-label">WHAT WENT WRONG</div>
+            ${hint}
           </div>
-          <button class="btn btn-outline" style="margin-top:10px" onclick="leaveCard()">LEAVE BUSINESS CARD →</button>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="tryAgain()">TRY AGAIN →</button>
         `;
       }
+      if (p1Attempts >= 8) {
+        resHtml += `
+          <div class="ai-box warm" style="margin-top:12px">
+            <div class="ai-label">8 ATTEMPTS REACHED</div>
+            You can leave your business card and move on — but your outreach score will be capped at 20.
+          </div>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="leaveCard()">LEAVE BUSINESS CARD →</button>
+        `;
+      }
+      document.getElementById('p1-res').innerHTML = resHtml;
     }
   } catch(e) {
     document.getElementById('p1-res').innerHTML = `<div class="ai-box blocked"><div class="ai-label">ERROR</div>Something went wrong. Please try again.</div>`;
